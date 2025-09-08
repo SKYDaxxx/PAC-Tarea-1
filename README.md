@@ -1,120 +1,254 @@
-# Cómo Contribuir
+# Escáner de Puertos en C++
 
-## 1. Haz un fork del Repositorio Principal
+## Tabla de Contenidos
 
-1. Haz click en el botón **"Fork"** (esquina superior derecha)
-2. Selecciona tu cuenta para crear la copia
+- [Descripción general](#descripción-general)
+- [Integrantes del equipo](#integrantes-del-equipo)
+- [Instrucciones de compilación y ejecución](#instrucciones-de-compilación-y-ejecución)
+  - [Requisitos](#requisitos)
+  - [Compilación](#compilación)
+  - [Ejecución](#ejecución)
+    - [Opciones disponibles](#opciones-disponibles)
+- [Enfoque técnico del escaneo](#enfoque-técnico-del-escaneo)
+- [Criterios para puertos sospechosos](#criterios-para-puertos-sospechosos)
+- [Salida generada](#salida-generada)
+  - [Salida en Consola](#salida-en-consola)
+  - [Salida en Archivo (Reporte)](#salida-en-archivo-reporte)
+- [Documentación de los módulos](#documentación-de-los-módulos)
+  - [Módulo: escaneo.cpp](#módulo-escaneocpp)
+    - [Funciones principales](#funciones-principales)
+  - [Módulo: analisis.cpp](#módulo-analisiscpp)
+    - [Funciones principales](#funciones-principales-1)
+   - [Módulo: registro.cpp](#módulo-registrocpp)
+     - [Funciones principales](#funciones-principales-2)
 
-## 2. Clonar Tu Fork
+## Descripción general
 
-```bash
-# Clona el fork
-git clone https://github.com/TU_USUARIO/nombre-proyecto.git
+Este proyecto es un escáner de puertos en C++ que realiza un escaneo
+real de puertos TCP en una dirección IP específica.
+Su objetivo es identificar puertos abiertos, categorizar los que son
+potencialmente sospechosos según un conjunto de criterios definidos, y
+registrar los resultados en un archivo de texto.
 
-# Entrar al directorio
-cd PAC-Tarea-1
+El programa está diseñado de forma modular, con módulos separados
+para: 
+- Escaneo (escaneo.cpp)
+- Análisis de riesgo(analisis.cpp)
+- Registro de resultados (registro.cpp)
 
-# Agregar el repositorio original como "upstream"
-git remote add upstream https://github.com/USUARIO_ORIGINAL/PAC-Tarea-1.git
+------------------------------------------------------------------------
+
+## Integrantes del equipo
+
+-   GAEL MORA AGUIRRE
+-   ANDRES TADEO FLORES PINAL
+-   JORGE LUIS CASAS CRUZ
+-   EDUARDO FLORES SMITH
+
+------------------------------------------------------------------------
+
+## Instrucciones de compilación y ejecución
+
+### Requisitos
+
+-   **Sistema operativo:** Compatible con Linux .
+-   **Compilador:** g++ (para Linux) y x86_64-w64-mingw32-g++ para Windows.
+-   **Librerías:** API nativa de sockets
+    -   Winsock2 en Windows
+    -   sys/socket.h en Linux
+-   **Soporte para Windows:** La compilación para Windows usando MinGW está implementada como una prueba de concepto (PoC). Funciona, pero el rendimiento es significativamente más lento que en Linux, especialmente con un alto número de hilos, por lo que se recomienda escanear un rango reducido de puertos para evitar tiempos de espera prolongados.
+
+### Compilación
+
+El proyecto incluye un **Makefile** para simplificar la compilación.
+
+-   Para compilar en Linux:
+
+``` bash
+make 
 ```
 
-## 3. Sincronizar con el Repositorio Principal
+-   Para compilar para Windows (desde Linux, usando MinGW):
 
-```bash
-# Descargar los cambios del repositorio original
-git fetch upstream
-
-# Cambiar a la rama principal
-git checkout main
-
-# Fusionar cambios del upstream
-git merge upstream/main
+``` 
+make linux-windows
 ```
 
-## 4. Crear una rama para el pull request
+### Ejecución
 
-```bash
-# Crear y cambiar a nueva rama
-git checkout -b feature/nueva-funcionalidad
+El programa espera una dirección IP como primer argumento, seguida de
+opciones.
+
+Ejemplo de uso:
+
+``` bash
+./port_scanner <IP> [-pPUERTOS] [-sNIVEL] [-tTHREADS] [-oARCHIVO]
+
+# Ejemplo
+./port_scanner 127.0.0.1 -p 20-1000,8080 -s 3 -t 10 -o reporte.txt
 ```
 
-**Sugerencias para los nombres de las ramas**
+#### Opciones disponibles:
 
-- `feature/nombre-funcionalidad`: Nuevas características
-- `bugfix/descripcion-bug`: Corrección de errores
-- `refactor/mejora-codigo`: Refactorización
+-   `-p` o `--puertos`: Especifica los puertos a escanear.
 
-> No tengo ninguna preferencia por el nommbre así que le pueden poner lo que quieran
+    -   Puede ser un rango (ej. 1-1000) o una lista separada por comas
+        (ej. 22,80,443).
+    -   Valor por defecto: 1-1024.
 
-## 5. Desarrollar y Hacer Commits
+-   `-s` o `--sensibilidad`: Define el nivel de sensibilidad para el análisis
+    de riesgo.
 
-```bash
-# Ver estado de archivos
-git status
+    -   1 = Bajo
+    -   2 = Medio (por defecto)
+    -   3 = Alto
 
-# Agregar archivos específicos
-git add x y z
+-   `-t` o `--threads`: Número de hilos a utilizar en el escaneo.
 
-# O agregar todos los cambios
-git add .
+-   `-o` o `--output`: Nombre del archivo donde se guardará el reporte.
 
-# Hacer commit con mensaje descriptivo
-git commit -m "Agregar función para identificar el OS"
-```
+-   `-h` o `--help`: Muestra con detalle la funcionalidad de cada argumento, asi como algunos ejemplos.
 
-## 6. Subir Cambios a tu Fork
+------------------------------------------------------------------------
 
-```bash
-# Subir tu rama al fork
-git push origin feature/nueva-funcionalidad
-```
+## Enfoque técnico del escaneo
 
-## 7. Crear Pull Request
+-   Uso de sockets en C++ para realizar conexiones reales a cada
+    puerto TCP.
+-   Sockets no bloqueantes con timeout de 500ms, diferenciando
+    entre:
+    -   Puertos abiertos
+    -   Puertos cerrados
+    -   Puertos filtrados
+-   Implementación paralela con hilos (std::thread) y la librería
+    `<future>`.
+-   El número de hilos se determina automáticamente según el hardware o
+    puede ser configurado por el usuario.
 
-1. Ve a **tu fork** en GitHub
-2. Haz click en **Compare & pull request**
-3. Idealmente pon un título y descripción
-4. Haz click en **"Create pull request"**
+------------------------------------------------------------------------
 
-## 8. Esto no es tan serio para hacer code reviews
+## Criterios para puertos sospechosos
 
-Si por alguna razón hay que hacer cambios:
+El módulo Analisis.cpp marca un puerto abierto como *sospechoso*
+según los siguientes criterios:
 
-```bash
-# Hacer cambios
-# Commitear los cambios
-git add .
-git commit -m "fix: corregir validación de dimensiones matrices"
+1.  **Puertos de malware conocido** → usados por troyanos, backdoors,
+    etc.
+2.  **Servicios administrativos expuestos** → SSH, RDP, MySQL, etc.
+3.  **Puertos P2P** → asociados a aplicaciones de intercambio de
+    archivos.
+4.  **Puertos en rangos inusuales** → dinámicos o con patrones numéricos
+    sospechosos.
+5.  **Secuencias consecutivas de puertos abiertos** → detección de al
+    menos 5 consecutivos.
 
-# Subir actualizaciones
-git push origin feature/nueva-funcionalidad
-```
+La sensibilidad se ajusta con `-s` para:
+- Poco sensible (s1)
+- Normal (s2)
+- Muy sensible (s3)
 
-El pull request se actualiza automáticamente.
+> Con sensibilidad nos referimos a la cantidad mínima de puntos que un puerto necesita para ser considerado sospechoso, entre más sensible, menos puntos necesita.
 
-## 9. Después de que el pull request se acepte
+------------------------------------------------------------------------
 
-```bash
-# Cambiar a main
-git checkout main
+## Salida generada
+El programa genera dos tipos de salida, una en la consola y otra opcional en un archivo.
 
-# Actualizar desde upstream
-git pull upstream main
+## Salida en Consola
+La consola mostrará el progreso del escaneo y, una vez finalizado, una lista de los puertos que se encontraron abiertos en el sistema objetivo, así como una lista separada de los puertos que se categorizaron como sospechosos.
 
-# Subir cambios a tu fork
-git push origin main
+## Salida en Archivo (Reporte)
+Si se especifica la opción de salida (-o), el programa generará un archivo de texto con un reporte detallado que incluye:
 
-# Borrar rama local (opcional)
-git branch -d feature/nueva-funcionalidad
+-Fecha y hora del escaneo.
 
-# Borrar rama remota (opcional)
-git push origin --delete feature/nueva-funcionalidad
-```
+-La dirección IP objetivo.
 
-## Tips Importantes
+-Un listado de los puertos escaneados con su estado (abierto, cerrado o filtrado).
 
-- **Siempre** crear rama nueva para cada contribución
-- **Nunca** trabajar directamente en `main`
-- Hacer commits pequeños y frecuentes
-- Probar tu código antes del pull request
-- Mantener el fork sincronizado
+-Una lista de los puertos sospechosos con una justificación clara de por qué fueron marcados como tal.
+
+-Estadísticas del escaneo.
+
+------------------------------------------------------------------------
+
+# Documentación de los módulos
+
+## Módulo: `escaneo.cpp`
+
+Este módulo contiene la lógica principal para realizar el escaneo de puertos.
+
+### Funciones principales
+
+- **escanearPuertos()**  
+  Orquesta el escaneo paralelo utilizando hilos. Controla la distribución de los puertos entre los hilos y recopila los resultados.
+
+- **verificarPuerto(puerto, IP)**  
+  Realiza la conexión real a un puerto específico para determinar si está **abierto**, **cerrado** o **filtrado**.  
+  - Implementa **sockets no bloqueantes** y un **timeout** para manejar los diferentes estados.  
+
+- **validarIP(IP)**  
+  Verifica que la dirección IP ingresada sea válida.
+
+- **obtenerServicio(puerto)**  
+  Devuelve el nombre del servicio asociado a un puerto común (ej.: 80 → HTTP).
+
+## Módulo: `analisis.cpp`
+
+Este módulo analiza los resultados del escaneo para identificar **puertos sospechosos**.
+
+### Funciones principales
+
+- **identificarSospechosos(resultados, nivelSensibilidad)**  
+  Función principal de análisis.  
+  - Calcula la **puntuación de riesgo** de cada puerto abierto según los criterios definidos.  
+  - Compara con el **nivel de sensibilidad** del usuario para determinar si el puerto es sospechoso.
+
+- **calcularPuntuacionRiesgo(puerto)**  
+  Asigna una **puntuación numérica** a un puerto según sus características:  
+  - Si pertenece a la lista de puertos maliciosos.  
+  - Si es un puerto administrativo expuesto.  
+  - Otros criterios definidos por la política de análisis.
+
+- **obtenerRazonSospecha(puerto)**  
+  Devuelve una **cadena de texto** explicando por qué un puerto fue marcado como sospechoso.
+
+- **detectarSecuenciasSospechosas(puertosAbiertos)**  
+  Identifica **secuencias de puertos consecutivos abiertos**, lo que podría indicar un patrón de escaneo o comportamiento anómalo.
+
+## Módulo: `registro.cpp`
+Este módulo se encarga de generar reportes detallados de los resultados del escaneo en archivos de texto con formato profesional.
+
+### Funciones principales
+- **guardarResultados(nombreArchivo, ip, resultados, sospechosos)**  
+  Función principal que coordina la generación completa del reporte.  
+  - Valida el nombre del archivo antes de la escritura.  
+  - Orquesta la escritura de todas las secciones del reporte.  
+  - Implementa manejo robusto de errores.
+
+- **escribirEncabezado(archivo, ip)**  
+  Genera el encabezado del reporte con información básica.  
+  - Título del reporte con formato profesional.  
+  - IP objetivo del escaneo y fecha/hora de generación.
+
+- **escribirResultadosCompletos(archivo, resultados)**  
+  Crea una tabla formateada con todos los puertos abiertos encontrados.  
+  - Columnas: Puerto, Estado, Tiempo de respuesta, Servicio.  
+  - Filtra automáticamente solo los puertos abiertos.
+
+- **escribirPuertosSospechosos(archivo, sospechosos)**  
+  Genera el análisis detallado de puertos potencialmente peligrosos.  
+  - Lista cada puerto sospechoso con su justificación.  
+  - Incluye los criterios de evaluación utilizados.
+
+- **escribirEstadisticas(archivo, resultados)**  
+  Calcula y presenta estadísticas del escaneo.  
+  - Distribución porcentual de estados de puertos.  
+  - Tiempo promedio de respuesta y total de puertos escaneados.
+
+- **escribirRecomendaciones(archivo, sospechosos)**  
+  Genera recomendaciones de seguridad contextualizadas según el nivel de riesgo detectado.  
+  - **CRÍTICO**: Para puertos asociados con malware.  
+  - **ALTO RIESGO**: Para servicios administrativos expuestos.  
+  - **MEDIO RIESGO**: Para aplicaciones P2P no autorizadas.
+
